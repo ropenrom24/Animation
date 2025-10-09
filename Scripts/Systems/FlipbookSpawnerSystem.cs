@@ -50,7 +50,7 @@ public partial struct FlipbookSpawnerSystem : ISystem
             ecb.AddComponent(npcProto, new RandomState { Rng = new Unity.Mathematics.Random(1u) });
             ecb.AddComponent(npcProto, new PerceptionControl { CooldownSeconds = 0.1f, JitterFraction = 0.25f, MaxPerCellChecks = 12, MaxAgentChecks = 96, Timer = 0.1f });
             ecb.AddComponent<HpBarVisible>(npcProto);
-            ecb.AddComponent(npcProto, new RecentlyDamaged { Timer = 0f });
+            ecb.AddComponent(npcProto, new RecentlyDamaged { Timer = 0f, TintTimer = 0F });
             ecb.AddComponent<Alive>(npcProto);
             ecb.AddBuffer<Damage>(npcProto);
             ecb.AddComponent<VisibleTag>(npcProto);
@@ -71,6 +71,7 @@ public partial struct FlipbookSpawnerSystem : ISystem
                 ecb.SetComponent(e, LocalTransform.FromPositionRotationScale(new float3(p.x, p.y, 0f), quaternion.identity, 1f));
                 ecb.SetComponent(e, new Team { Value = 0 });
                 ecb.AddComponent<NPCTag>(e);
+                AddPhysicsToPrototype(ecb, e, 0.5f, true);
             }
             ecb.DestroyEntity(npcProto);
         }
@@ -92,7 +93,7 @@ public partial struct FlipbookSpawnerSystem : ISystem
             ecb.AddComponent(monProto, new RandomState { Rng = new Unity.Mathematics.Random(777u) });
             ecb.AddComponent(monProto, new PerceptionControl { CooldownSeconds = 0.1f, JitterFraction = 0.25f, MaxPerCellChecks = 12, MaxAgentChecks = 96, Timer = 0.1f });
             ecb.AddComponent<HpBarVisible>(monProto);
-            ecb.AddComponent(monProto, new RecentlyDamaged { Timer = 0f });
+            ecb.AddComponent(monProto, new RecentlyDamaged { Timer = 0f, TintTimer = 0f });
             ecb.AddComponent<Alive>(monProto);
             ecb.AddBuffer<Damage>(monProto);
             ecb.AddComponent<VisibleTag>(monProto);
@@ -113,6 +114,7 @@ public partial struct FlipbookSpawnerSystem : ISystem
                 ecb.SetComponent(e, LocalTransform.FromPositionRotationScale(new float3(p.x, p.y, 0f), quaternion.identity, 1f));
                 ecb.SetComponent(e, new Team { Value = 1 });
                 ecb.AddComponent<MonsterTag>(e);
+                AddPhysicsToPrototype(ecb, e, 0.5f, true);
             }
             ecb.DestroyEntity(monProto);
         }
@@ -121,5 +123,14 @@ public partial struct FlipbookSpawnerSystem : ISystem
         ecb.DestroyEntity(SystemAPI.GetSingletonEntity<FlipbookSpawner>());
         ecb.Playback(state.EntityManager);
         ecb.Dispose();
+    }
+
+    private void AddPhysicsToPrototype(EntityCommandBuffer ecb, Entity protoEntity, float radius, bool isTrigger = false)
+    {
+        // Add collision geometry component
+        ecb.AddComponent(protoEntity, new CollisionGeometry { Radius = radius });
+        ecb.AddComponent<PhysicsShapeRef>(protoEntity);
+        ecb.AddComponent<PhysicsEnabled>(protoEntity);
+        ecb.SetComponentEnabled<PhysicsEnabled>(protoEntity, false);
     }
 }

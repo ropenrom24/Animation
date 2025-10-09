@@ -4,10 +4,10 @@ public class SimpleCameraController : MonoBehaviour
 {
     public float panSpeed = 20f;
     public float zoomSpeed = 20f;
-    public float minZoomDistance = 5f;
-    public float maxZoomDistance = 100f; // Adjust as needed
+    public float minZoom = 2f;
+    public float maxZoom = 20f;
 
-    private Vector3 lastPanPosition;
+    private Vector2 lastPanPosition;
     private Camera cam;
 
     void Awake()
@@ -16,73 +16,82 @@ public class SimpleCameraController : MonoBehaviour
         if (cam == null)
         {
             Debug.LogError("SimpleCameraController requires a Camera component on the same GameObject.", this);
-            this.enabled = false;
+            enabled = false;
         }
+
+        // Force orthographic mode for 2D
+        cam.orthographic = true;
     }
 
     void Update()
     {
-        HandlePanning();
-        HandleZooming();
+#if UNITY_EDITOR || UNITY_STANDALONE
+        HandleMousePanning();
+        HandleMouseZooming();
+#elif UNITY_ANDROID || UNITY_IOS
+        HandleTouchControls();
+#endif
     }
 
-    void HandlePanning()
+    // === DESKTOP CONTROLS ===
+    void HandleMousePanning()
     {
-        // Check if Middle Mouse Button is pressed down
-        if (Input.GetMouseButtonDown(2)) // 2 is the middle mouse button
-        {
+        if (Input.GetMouseButtonDown(2))
             lastPanPosition = Input.mousePosition;
-        }
 
-        // Check if Middle Mouse Button is held down
         if (Input.GetMouseButton(2))
         {
-            Vector3 delta = Input.mousePosition - lastPanPosition;
-            
-            // Adjust sensitivity - may need tweaking depending on screen resolution/camera settings
-            float adjustedPanSpeed = panSpeed * Time.deltaTime;
-            if (cam.orthographic) 
-            {
-                // Adjust speed based on orthographic size for consistent feel
-                adjustedPanSpeed *= cam.orthographicSize / 10f; // Example adjustment factor
-            }
-
-            // Calculate movement vector relative to camera orientation
-            Vector3 move = new Vector3(-delta.x * adjustedPanSpeed, -delta.y * adjustedPanSpeed, 0);
-            transform.Translate(move, Space.Self); // Move relative to camera's local axes
-
-            // Update last position for next frame's delta calculation
+            Vector2 delta = (Vector2)Input.mousePosition - lastPanPosition;
+            Vector3 move = new Vector3(-delta.x, -delta.y, 0) * (panSpeed * Time.deltaTime * cam.orthographicSize / 100f);
+            transform.Translate(move, Space.Self);
             lastPanPosition = Input.mousePosition;
         }
     }
 
-    void HandleZooming()
+    void HandleMouseZooming()
     {
         float scroll = Input.GetAxis("Mouse ScrollWheel");
-
-        if (scroll != 0f)
+        if (Mathf.Abs(scroll) > 0.001f)
         {
-            if (cam.orthographic)
-            {
-                // Adjust orthographic size
-                cam.orthographicSize -= scroll * zoomSpeed * Time.deltaTime * 50f; // Adjust multiplier as needed
-                cam.orthographicSize = Mathf.Clamp(cam.orthographicSize, minZoomDistance, maxZoomDistance);
-            }
-            else
-            {
-                // Move perspective camera forward/backward
-                 // Calculate move amount, potentially faster when further away
-                float moveAmount = scroll * zoomSpeed * Time.deltaTime * 100f; // Adjust multiplier
-                Vector3 move = transform.forward * moveAmount;
-                Vector3 newPos = transform.position + move;
-
-                // Basic distance clamping (optional, adjust based on need)
-                // float currentDistance = Vector3.Distance(newPos, Vector3.zero); // Assuming origin focus
-                // if (currentDistance >= minZoomDistance && currentDistance <= maxZoomDistance)
-                // {
-                      transform.Translate(move, Space.World);
-                // }
-            }
+            cam.orthographicSize -= scroll * zoomSpeed;
+            cam.orthographicSize = Mathf.Clamp(cam.orthographicSize, minZoom, maxZoom);
         }
     }
-} 
+
+    // === MOBILE CONTROLS ===
+    void HandleTouchControls()
+    {
+        if (Input.touchCount == 1)
+        {
+            // One finger: pan
+            Touch touch = Input.GetTouch(0);
+
+            if (touch.phase == TouchPhase.Began)
+                lastPanPosition = touch.position;
+
+            if (touch.phase == TouchPhase.Moved)
+            {
+                Vector2 delta = touch.position - lastPanPosition;
+                Vector3 move = new Vector3(-delta.x, -delta.y, 0) * (panSpeed * Time.deltaTime * cam.orthographicSize / 100f);
+                transform.Translate(move, Space.Self);
+                lastPanPosition = touch.position;
+            }
+        }
+        else if (Input.touchCount == 2)
+        {
+            // Two fingers: pinch to zoom
+            Touch t0 = Input.GetTouch(0);
+            Touch t1 = Input.GetTouch(1);
+
+            Vector2 t0Prev = t0.position - t0.deltaPosition;
+            Vector2 t1Prev = t1.position - t1.deltaPosition;
+
+            float prevDist = Vector2.Distance(t0Prev, t1Prev);
+            float currDist = Vector2.Distance(t0.position, t1.position);
+            float delta = currDist - prevDist;
+
+            cam.orthographicSize -= delta * zoomSpeed * Time.deltaTime * 0.1f;
+            cam.orthographicSize = Mathf.Clamp(cam.orthographicSize, minZoom, maxZoom);
+        }
+    }
+}

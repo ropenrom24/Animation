@@ -24,7 +24,8 @@ namespace RPG.Systems
             new ApplyDamageJob
             {
                 ecb = ecb,
-                ShowSecs = 1.25f // how long to keep the bar visible after a hit
+                ShowSecs = 1.25f, // how long to keep the bar visible after a hit
+                tintDamageLasts = 0.5f
             }.ScheduleParallel();
         }
 
@@ -34,6 +35,7 @@ namespace RPG.Systems
         {
             public EntityCommandBuffer.ParallelWriter ecb;
             public float ShowSecs;
+            public float tintDamageLasts;
 
             private void Execute(
                 [ChunkIndexInQuery] int chunkIndex,
@@ -82,6 +84,7 @@ namespace RPG.Systems
 
                 // Timer-only visibility: refresh on every hit
                 recentlyDamaged.Timer = math.max(recentlyDamaged.Timer, ShowSecs); // or: = ShowSecs;
+                recentlyDamaged.TintTimer = math.max(recentlyDamaged.TintTimer, tintDamageLasts);
 
                 if (before > 0f && after <= 0f)
                 {

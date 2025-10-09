@@ -67,6 +67,7 @@ namespace RPG.Systems
 
                 // 2) Decrement "recently damaged" timer (always)
                 recentlyDamaged.Timer = math.max(0f, recentlyDamaged.Timer - DeltaTime);
+                recentlyDamaged.TintTimer = math.max(0f, recentlyDamaged.TintTimer - DeltaTime);
 
                 // 3) TIMER-ONLY visibility
                 float targetA = (recentlyDamaged.Timer > 0f) ? 1f : 0f;
